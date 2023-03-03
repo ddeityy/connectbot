@@ -4,6 +4,7 @@ from pymumble_py3.constants import (
     PYMUMBLE_CONN_STATE_FAILED,
     PYMUMBLE_CLBK_USERREMOVED,
     PYMUMBLE_CLBK_USERUPDATED,
+    PYMUMBLE_CLBK_USERCREATED,
 )
 import threading
 import re
@@ -18,12 +19,9 @@ class Bot(threading.Thread):
             password="",
             tokens=[],
             stereo=False,
-            debug=True,
+            debug=False,
             certfile=None,
-            reconnect=True,
-        )
-        self.mumble.callbacks.set_callback(
-            PYMUMBLE_CLBK_TEXTMESSAGERECEIVED, self.message_received
+            reconnect=False,
         )
         self.connect = None
         self.mumble.start()  # start the mumble thread
@@ -33,17 +31,33 @@ class Bot(threading.Thread):
             exit()
 
         self.join_channel("9v9 Xenon")
-        self._user_in_channel = self.get_user_count_in_channel()
+        self.users = self.get_user_count_in_channel()
 
-        user_change_callback = lambda user, action: threading.Thread(
-            target=self.users_changed, args=(user, action), daemon=True
+        user_move_callback = lambda user, action: threading.Thread(
+            target=self.change_callback,
+            args=(user, action),
+            daemon=True,
+        ).start()
+
+        user_disconnect_callback = lambda user, action: threading.Thread(
+            target=self.disconnect_callback, args=(user, action), daemon=True
+        ).start()
+
+        user_connect_callback = lambda user: threading.Thread(
+            target=self.connect_callback, args=(user), daemon=True
         ).start()
 
         self.mumble.callbacks.set_callback(
-            PYMUMBLE_CLBK_USERREMOVED, user_change_callback
+            PYMUMBLE_CLBK_USERREMOVED, user_disconnect_callback
         )
         self.mumble.callbacks.set_callback(
-            PYMUMBLE_CLBK_USERUPDATED, user_change_callback
+            PYMUMBLE_CLBK_USERUPDATED, user_move_callback
+        )
+        self.mumble.callbacks.set_callback(
+            PYMUMBLE_CLBK_USERCREATED, user_connect_callback
+        )
+        self.mumble.callbacks.set_callback(
+            PYMUMBLE_CLBK_TEXTMESSAGERECEIVED, self.message_received
         )
 
     def join_channel(self, name):
@@ -64,11 +78,28 @@ class Bot(threading.Thread):
         own_channel = self.mumble.channels[self.mumble.users.myself["channel_id"]]
         return len(own_channel.get_users())
 
-    def users_changed(self, user, action):
-        user_count = self.get_user_count_in_channel()
-        if user_count > self._user_in_channel and self.connect != None:
-            self.send_channel_msg(self.connect)
-            self._user_in_channel = user_count
+    def connect_callback(self, user, action, four, five):
+        print("connect")
+        self.users = self.get_user_count_in_channel()
+        print(f"Users: {self.users}")
+
+    def disconnect_callback(self, user, action):
+        print("disconnect")
+        self.users = self.get_user_count_in_channel()
+        print(f"Users: {self.users}")
+        if self.users == 1:
+            self.connect = None
+
+    def change_callback(self, user, action):
+        self.users = self.get_user_count_in_channel()
+        if user["channel_id"] == 18:
+            print(user["name"] + " connected")
+            if self.connect != None:
+                print("sending connect")
+                self.send_channel_msg(self.connect)
+        else:
+            print(user["name"] + " disconnected")
+        print(f"Users: {self.users}")
 
     def loop(self):
         while self.mumble.is_alive():
