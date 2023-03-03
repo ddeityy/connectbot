@@ -30,7 +30,6 @@ class Bot(threading.Thread):
         if self.mumble.connected >= PYMUMBLE_CONN_STATE_FAILED:
             exit()
 
-        self.join_channel("9v9 Xenon")
         self.users = self.get_user_count_in_channel()
 
         user_move_callback = lambda user, action: threading.Thread(
@@ -75,7 +74,7 @@ class Bot(threading.Thread):
             self.connect = message
 
     def get_user_count_in_channel(self):
-        own_channel = self.mumble.channels[self.mumble.users.myself["channel_id"]]
+        own_channel = self.mumble.channels.find_by_name("9v9 Xenon")
         return len(own_channel.get_users())
 
     def connect_callback(self, user, action, four, five):
@@ -87,11 +86,13 @@ class Bot(threading.Thread):
         print("disconnect")
         self.users = self.get_user_count_in_channel()
         print(f"Users: {self.users}")
-        if self.users == 1:
+        if self.users == 0:
             self.connect = None
 
     def change_callback(self, user, action):
         self.users = self.get_user_count_in_channel()
+        if self.users == 0:
+            self.connect = None
         if user["channel_id"] == 18:
             print(user["name"] + " connected")
             if self.connect != None:
