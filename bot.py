@@ -58,6 +58,7 @@ class Bot(threading.Thread):
         self.mumble.callbacks.set_callback(
             PYMUMBLE_CLBK_TEXTMESSAGERECEIVED, self.message_received
         )
+        self.join_channel("9v9 Xenon")
 
     def join_channel(self, name):
         self.mumble.channels.find_by_name(name).move_in()
@@ -77,7 +78,7 @@ class Bot(threading.Thread):
         own_channel = self.mumble.channels.find_by_name("9v9 Xenon")
         return len(own_channel.get_users())
 
-    def connect_callback(self, user, action, four, five):
+    def connect_callback(self, user, action, four, five, six):
         print("connect")
         self.users = self.get_user_count_in_channel()
         print(f"Users: {self.users}")
@@ -93,11 +94,14 @@ class Bot(threading.Thread):
         self.users = self.get_user_count_in_channel()
         if self.users == 0:
             self.connect = None
+        print(action)
         if user["channel_id"] == 18:
-            print(user["name"] + " connected")
-            if self.connect != None:
-                print("sending connect")
-                self.send_channel_msg(self.connect)
+            if "channel_id" in action:
+                print(user["name"] + " connected")
+                print(self.connect)
+                if self.connect != None:
+                    print("sending connect")
+                    self.send_channel_msg(self.connect)
         else:
             print(user["name"] + " disconnected")
         print(f"Users: {self.users}")
