@@ -80,12 +80,12 @@ class Bot(threading.Thread):
 
     def connect_callback(self, user, action, four, five, six):
         print("connect")
-        print(user)
-        print(action)
-        print(four)
-        print(five)
-        print(six)
+        old = self.users
         self.users = self.get_user_count_in_channel()
+        if old < self.users:
+            if self.connect != None:
+                print("sending connect")
+                self.send_channel_msg(self.connect)
         print(f"Users: {self.users}")
 
     def disconnect_callback(self, user, action):
