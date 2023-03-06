@@ -80,6 +80,11 @@ class Bot(threading.Thread):
 
     def connect_callback(self, user, action, four, five, six):
         print("connect")
+        print(user)
+        print(action)
+        print(four)
+        print(five)
+        print(six)
         self.users = self.get_user_count_in_channel()
         print(f"Users: {self.users}")
 
