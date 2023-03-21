@@ -78,7 +78,7 @@ class Bot(threading.Thread):
         own_channel = self.mumble.channels.find_by_name("9v9 Xenon")
         return len(own_channel.get_users())
 
-    def connect_callback(self, user, action, four, five, six):
+    def connect_callback(self, user, action, four, five, *args):
         print("connect")
         old = self.users
         self.users = self.get_user_count_in_channel()
@@ -92,12 +92,12 @@ class Bot(threading.Thread):
         print("disconnect")
         self.users = self.get_user_count_in_channel()
         print(f"Users: {self.users}")
-        if self.users == 0:
+        if self.users == 1:
             self.connect = None
 
     def change_callback(self, user, action):
         self.users = self.get_user_count_in_channel()
-        if self.users == 0:
+        if self.users == 1:
             self.connect = None
         print(action)
         if user["channel_id"] == 18:
