@@ -13,21 +13,24 @@ import logging
 
 logger = logging.getLogger("bot")
 logger.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
+formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
 
 stdout_handler = logging.StreamHandler(sys.stdout)
 stdout_handler.setLevel(logging.INFO)
 stdout_handler.setFormatter(formatter)
 
-file_handler = logging.FileHandler(filename="logs.log", mode='a', encoding='utf-8')
+file_handler = logging.FileHandler(filename="logs.log", mode="a", encoding="utf-8")
 file_handler.setLevel(logging.INFO)
 file_handler.setFormatter(formatter)
 
 logger.addHandler(file_handler)
 logger.addHandler(stdout_handler)
 
+
 class Bot(threading.Thread):
-    def __init__(self, port: int, host: str):
+    def __init__(
+        self, port: int, host: str, channel_id: int, channel_name: str, certfile: str
+    ):
         self.mumble = pymumble.Mumble(
             host=host,
             user="ConnectBot",
@@ -36,9 +39,11 @@ class Bot(threading.Thread):
             tokens=[],
             stereo=False,
             debug=False,
-            certfile=None,
+            certfile=certfile,
             reconnect=True,
         )
+        self.channel_id = channel_id
+        self.channel_name = channel_name
         self.connect_strting = None
         self.mumble.start()  # start the mumble thread
         self.mumble.is_ready()  # wait for the connection
@@ -75,7 +80,7 @@ class Bot(threading.Thread):
         self.mumble.callbacks.set_callback(
             PYMUMBLE_CLBK_TEXTMESSAGERECEIVED, self.message_received
         )
-        self.join_channel("9v9 Xenon")
+        self.join_channel(self.channel_name)
 
     def join_channel(self, name):
         self.mumble.channels.find_by_name(name).move_in()
@@ -89,15 +94,15 @@ class Bot(threading.Thread):
     def message_received(self, text):
         raw_message = text.message.strip()
         message = re.sub(r"<.*?>", "", raw_message)
-        if "connect " in message:
+        if "connect" in message:
             self.connect_strting = message
 
     def get_user_count_in_channel(self):
-        own_channel = self.mumble.channels.find_by_name("9v9 Xenon")
+        own_channel = self.mumble.channels.find_by_name(self.channel_name)
         return len(own_channel.get_users())
 
     def user_connect_callback(self, user, action, four, five, *args):
-        logger.info(user["name"] + " connected")
+        # logger.info(user["name"] + " connected")
         old = self.users
         self.users = self.get_user_count_in_channel()
         if old < self.users:
@@ -107,7 +112,7 @@ class Bot(threading.Thread):
         logger.info(f"Users: {self.users - 1}")
 
     def user_disconnect_callback(self, user, action):
-        logger.info(user['name'] + " disconnected")
+        # logger.info(user['name'] + " disconnected")
         self.users = self.get_user_count_in_channel()
         logger.info(f"Users: {self.users - 1}")
         if self.users == 1:
@@ -118,15 +123,17 @@ class Bot(threading.Thread):
         if self.users == 1:
             self.connect_strting = None
         logger.info(action)
-        if user["channel_id"] == 18:
+        logger.info(user["channel_id"])
+        if user["channel_id"] == self.channel_id:
             if "channel_id" in action:
-                logger.info(user["name"] + " connected")
+                # logger.info(user["name"] + " connected")
                 logger.info(self.connect_strting)
                 if self.connect_strting != None:
                     logger.info(f"Sending connect: {self.connect_strting}")
                     self.send_channel_msg(self.connect_strting)
         else:
-            logger.info(user["name"] + " disconnected")
+            pass
+            # logger.info(user["name"] + " disconnected")
         logger.info(f"Users: {self.users - 1}")
 
     def loop(self):
@@ -135,6 +142,19 @@ class Bot(threading.Thread):
 
 
 if __name__ == "__main__":
-    hl_bot = Bot(host="icewind.nl", port=64738)
-    #sixes_bot = Bot(host="icewind.nl", port=64738)
+    hl_bot = Bot(
+        host="icewind.nl",
+        port=64738,
+        channel_id=18,
+        channel_name="9v9 Xenon",
+        certfile="/etc/ssl/certs/connectbot.pem",
+    )
+    sixes_bot = Bot(
+        host="mumble.team-colonslash.eu",
+        port=10022,
+        channel_name="GC channel",
+        channel_id=1384,
+        certfile="/etc/ssl/certs/connectbot.pem",
+    )
     hl_bot.loop()
+    sixes_bot.loop()
