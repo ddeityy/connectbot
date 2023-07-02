@@ -64,8 +64,8 @@ class Bot(threading.Thread):
             target=self.user_disconnect_callback, args=(user, action), daemon=True
         ).start()
 
-        user_connect_callback = lambda user: threading.Thread(
-            target=self.user_connect_callback, args=(user), daemon=True
+        user_connect_callback = lambda session, user: threading.Thread(
+            target=self.user_connect_callback, args=(session, user), daemon=True
         ).start()
 
         self.mumble.callbacks.set_callback(
@@ -86,6 +86,11 @@ class Bot(threading.Thread):
         self.mumble.channels.find_by_name(name).move_in()
         logger.info(f"Bot connected to channel {name}")
 
+    def send_user_msg(self, msg):
+        msg = msg.encode("utf-8", "ignore").decode("utf-8")
+        user = self.mumble.users.myself
+        user.send_text_message(msg)
+
     def send_channel_msg(self, msg):
         msg = msg.encode("utf-8", "ignore").decode("utf-8")
         own_channel = self.mumble.channels[self.mumble.users.myself["channel_id"]]
@@ -101,27 +106,21 @@ class Bot(threading.Thread):
         own_channel = self.mumble.channels.find_by_name(self.channel_name)
         return len(own_channel.get_users())
 
-    def user_connect_callback(self, user, action, four, five, *args):
-        # logger.info(user["name"] + " connected")
+    def user_connect_callback(self, session, user):
+        logger.info(f"Connected: {user}")
         old = self.users
         self.users = self.get_user_count_in_channel()
         if old < self.users:
             if self.connect_strting != None:
                 logger.info(f"Sending connect: {self.connect_strting}")
-                self.send_channel_msg(self.connect_strting)
+                self.send_user_msg(self.connect_strting)
         logger.info(f"Users: {self.users - 1}")
-
-    def user_disconnect_callback(self, user, action):
-        # logger.info(user['name'] + " disconnected")
-        self.users = self.get_user_count_in_channel()
-        logger.info(f"Users: {self.users - 1}")
-        if self.users == 1:
-            self.connect_strting = None
 
     def user_state_change_callback(self, user, action):
         self.users = self.get_user_count_in_channel()
         if self.users == 1:
             self.connect_strting = None
+        logger.info(user["name"])
         logger.info(action)
         logger.info(user["channel_id"])
         if user["channel_id"] == self.channel_id:
@@ -130,11 +129,20 @@ class Bot(threading.Thread):
                 logger.info(self.connect_strting)
                 if self.connect_strting != None:
                     logger.info(f"Sending connect: {self.connect_strting}")
-                    self.send_channel_msg(self.connect_strting)
+                    self.send_user_msg(self.connect_strting)
         else:
             pass
             # logger.info(user["name"] + " disconnected")
         logger.info(f"Users: {self.users - 1}")
+
+    def user_disconnect_callback(self, *args):
+        user, reason = args
+        logger.info(user)
+        logger.info(reason)
+        self.users = self.get_user_count_in_channel()
+        logger.info(f"Users: {self.users - 1}")
+        if self.users == 1:
+            self.connect_strting = None
 
     def loop(self):
         while self.mumble.is_alive():
