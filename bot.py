@@ -44,7 +44,7 @@ class Bot(threading.Thread):
         )
         self.channel_id = channel_id
         self.channel_name = channel_name
-        self.connect_strting = None
+        self.connect_string = "connect nipple.tf; password nipple"
         self.mumble.start()  # start the mumble thread
         self.mumble.is_ready()  # wait for the connection
 
@@ -100,7 +100,8 @@ class Bot(threading.Thread):
         raw_message = text.message.strip()
         message = re.sub(r"<.*?>", "", raw_message)
         if "connect" in message:
-            self.connect_strting = message
+            self.connect_string = message
+            self.send_user_msg("Connect received: " + self.connect_string)
 
     def get_user_count_in_channel(self):
         own_channel = self.mumble.channels.find_by_name(self.channel_name)
@@ -111,25 +112,25 @@ class Bot(threading.Thread):
         old = self.users
         self.users = self.get_user_count_in_channel()
         if old < self.users:
-            if self.connect_strting != None:
-                logger.info(f"Sending connect: {self.connect_strting}")
-                self.send_user_msg(self.connect_strting)
+            if self.connect_string != None:
+                logger.info(f"Sending connect: {self.connect_string}")
+                self.send_user_msg(self.connect_string)
         logger.info(f"Users: {self.users - 1}")
 
     def user_state_change_callback(self, user, action):
         self.users = self.get_user_count_in_channel()
         if self.users == 1:
-            self.connect_strting = None
+            self.connect_string = "connect nipple.tf; password nipple"
         logger.info(user["name"])
         logger.info(action)
         logger.info(user["channel_id"])
         if user["channel_id"] == self.channel_id:
             if "channel_id" in action:
                 # logger.info(user["name"] + " connected")
-                logger.info(self.connect_strting)
-                if self.connect_strting != None:
-                    logger.info(f"Sending connect: {self.connect_strting}")
-                    self.send_user_msg(self.connect_strting)
+                logger.info(self.connect_string)
+                if self.connect_string != None:
+                    logger.info(f"Sending connect: {self.connect_string}")
+                    self.send_user_msg(self.connect_string)
         else:
             pass
             # logger.info(user["name"] + " disconnected")
@@ -142,7 +143,7 @@ class Bot(threading.Thread):
         self.users = self.get_user_count_in_channel()
         logger.info(f"Users: {self.users - 1}")
         if self.users == 1:
-            self.connect_strting = None
+            self.connect_string = "connect nipple.tf; password nipple"
 
     def loop(self):
         while self.mumble.is_alive():
